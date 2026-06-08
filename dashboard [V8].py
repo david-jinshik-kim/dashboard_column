@@ -545,13 +545,117 @@ for cfg in force_configs:
 st.header("Data Tables & S-CONCRETE Export")
 
 ordered_cols = ['Story', 'Unique Name', 'Group Name', 'Output Case', 'P', 'T', 'V2', 'M3', 'V3', 'M2', 'Length', 'UniquePtI', 'UniquePtJ', 'Xi', 'Yi', 'Zi', 'Xj', 'Yj', 'Zj', 'Analysis Section']
-df_table = filtered_df[ordered_cols].copy()
 
-st.write(f"**Total Filtered Rows:** {len(df_table)}")
+# --- NEW: RESTORED MAX TABLE ---
+st.subheader("Global Maximum Element Forces (Based on Selection)")
+max_rows = []
+
+for cfg in force_configs:
+    target_col = cfg['col']
+    idx = None
+    
+    if cfg['metric'] == 'max_pos':
+        sub_df = filtered_df[filtered_df[target_col] > 0]
+        if not sub_df.empty: idx = sub_df[target_col].idxmax()
+            
+    elif cfg['metric'] == 'min_neg':
+        sub_df = filtered_df[filtered_df[target_col] < 0]
+        if not sub_df.empty: idx = sub_df[target_col].idxmin()
+            
+    elif cfg['metric'] == 'abs_max':
+        if not filtered_df.empty:
+            idx = filtered_df[target_col].abs().idxmax()
+    
+    if idx is not None and pd.notna(idx):
+        row_data = filtered_df.loc[idx].to_dict()
+        row_data['Maximum Type'] = cfg['label']
+        max_rows.append(row_data)
+
+if max_rows:
+    df_max_table = pd.DataFrame(max_rows)
+    
+    max_table_cols = ['Maximum Type'] + [c for c in ordered_cols if c in df_max_table.columns]
+    target_max_df = df_max_table[max_table_cols]
+    
+    max_selection_event = st.dataframe(
+        target_max_df, 
+        use_container_width=True,
+        on_select="rerun",
+        selection_mode=["multi-row", "multi-column"]
+    )
+    
+    max_selected_rows = max_selection_event.selection.rows
+    max_selected_cols = max_selection_event.selection.columns
+    
+    if max_selected_rows or max_selected_cols:
+        if max_selected_rows and not max_selected_cols:
+            max_subset_df = target_max_df.iloc[max_selected_rows]
+        elif max_selected_cols and not max_selected_rows:
+            max_subset_df = target_max_df[max_selected_cols]
+        else:
+            max_subset_df = target_max_df.iloc[max_selected_rows][max_selected_cols]
+            
+        max_csv_data = max_subset_df.to_csv(index=False).encode('utf-8')
+        
+        st.success(f"You have selected {len(max_subset_df)} rows and {len(max_subset_df.columns)} columns.")
+        st.download_button(
+            label="📥 Download Max Forces Selection for Excel",
+            data=max_csv_data,
+            file_name="etabs_max_forces_selection.csv",
+            mime="text/csv",
+            type="primary",
+            key="download_max_forces" 
+        )
+else:
+    st.info("No matching max rows to display for the current selection.")
+
+# --- NEW: RESTORED COLUMN FILTERS & MAIN TABLE ---
+st.subheader("Filtered Element Forces Data")
+
+df_table_2 = filtered_df[ordered_cols].copy()
+
+modify = st.checkbox("🔍 Add Column Filters")
+
+if modify:
+    df_to_filter = df_table_2.copy()
+    with st.expander("Filter columns", expanded=True):
+        to_filter_columns = st.multiselect("Select columns to filter:", df_to_filter.columns)
+        
+        for column in to_filter_columns:
+            left, right = st.columns((1, 20))
+            left.write("↳")
+            
+            if is_numeric_dtype(df_to_filter[column]):
+                _min = float(df_to_filter[column].min())
+                _max = float(df_to_filter[column].max())
+                step = (_max - _min) / 100 if (_max - _min) > 0 else 1.0
+                
+                user_num_input = right.slider(
+                    f"Values for {column}",
+                    min_value=_min,
+                    max_value=_max,
+                    value=(_min, _max),
+                    step=step,
+                )
+                df_to_filter = df_to_filter[df_to_filter[column].between(*user_num_input)]
+                
+            else:
+                user_cat_input = right.multiselect(
+                    f"Values for {column}",
+                    options=df_to_filter[column].dropna().unique(),
+                    default=df_to_filter[column].dropna().unique(),
+                )
+                df_to_filter = df_to_filter[df_to_filter[column].isin(user_cat_input)]
+                
+    st.write(f"**Total Filtered Rows:** {len(df_to_filter)}")
+    target_df = df_to_filter
+else:
+    st.write(f"**Total Rows:** {len(df_table_2)}")
+    target_df = df_table_2
 
 # Render dataframe and catch selections
 selection_event = st.dataframe(
-    df_table, 
+    target_df, 
     use_container_width=True,
     on_select="rerun",
     selection_mode=["multi-row", "multi-column"]
@@ -560,7 +664,7 @@ selection_event = st.dataframe(
 selected_rows = selection_event.selection.rows
 
 if selected_rows:
-    subset_df = df_table.iloc[selected_rows]
+    subset_df = target_df.iloc[selected_rows]
     st.success(f"✅ You have selected {len(subset_df)} rows. You can now generate SCO files or download CSV.")
     
     col_csv, col_sco = st.columns([1, 1])
@@ -592,7 +696,6 @@ if selected_rows:
                 safe_group_dir = "".join([c for c in safe_group_str if c.isalnum() or c in " _-."]).strip()
                 
                 for unique_name, col_df in group_df.groupby("Unique Name"):
-                    
                     safe_col_str = str(unique_name).replace("/", "_").replace("\\", "_")
                     safe_col_name = "".join([c for c in safe_col_str if c.isalnum() or c in " _-."]).strip()
                     
@@ -607,7 +710,7 @@ if selected_rows:
                     hcol = dims[1] if len(dims) > 1 else bcol
                     
                     # 3. Extract Length
-                    length = float(col_df['Length'].iloc[0])
+                    length = float(col_df['Length'].max())
                     
                     # 4. Set KV Parameters
                     sco.set_params({
