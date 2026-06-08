@@ -1,0 +1,23 @@
+# --- Large Data Files ---
+# Ignore all raw ETABS exports and optimized files
+*.xlsx
+*.xls
+*.csv
+*.txt
+*.pkl
+*.parquet
+*.access
+
+# --- Python Environments & Caches ---
+# Ignore virtual environments so you don't commit 10,000 library files
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+
+# --- Streamlit & OS Hidden Files ---
+# Ignore local config files or secrets
+.streamlit/
+.env
+.DS_Store
