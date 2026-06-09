@@ -3,7 +3,6 @@
 *.xlsx
 *.xls
 *.csv
-*.txt
 *.pkl
 *.parquet
 *.access
