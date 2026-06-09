@@ -1,10 +1,4 @@
 # --- Large Data Files ---
-# Ignore all raw ETABS exports and optimized files
-*.xlsx
-*.xls
-*.csv
-*.pkl
-*.parquet
 *.access
 
 # --- Python Environments & Caches ---
