@@ -2,11 +2,13 @@ import streamlit as st
 import pandas as pd
 
 @st.cache_data
-def load_data(file_buffer):
+def load_data(data_source):
+    
+    # data_source can be either an uploaded file buffer OR a string file path!
     try: 
-        xls = pd.ExcelFile(file_buffer, engine='calamine')
+        xls = pd.ExcelFile(data_source, engine='calamine')
     except ValueError: 
-        xls = pd.ExcelFile(file_buffer)
+        xls = pd.ExcelFile(data_source)
         
     def read_etabs_sheet(excel_obj, sheet_name):
         df = pd.read_excel(excel_obj, sheet_name=sheet_name, skiprows=[0])
