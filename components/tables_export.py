@@ -129,8 +129,8 @@ def render_tables_and_export(filtered_df, force_configs):
                             "Cm bcol": bcol,
                             "Cm hcol": hcol,
                             "Cm D": bcol, 
-                            "LuYY": length,
-                            "LuZZ": length,
+                            "LuYY": length*1000, #temporary fix to convert m to mm, should ideally read ETABS unit and convert accordingly
+                            "LuZZ": length*1000, #temporary fix to convert m to mm, should ideally read ETABS unit and convert accordingly
                             "Member Name": unique_name
                         })
                         
