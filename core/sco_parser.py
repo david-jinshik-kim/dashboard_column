@@ -178,7 +178,7 @@ class ScoFile:
             for obj in self._kv_objects():
                 if obj.table.set(k, v):
                     success = True
-                    break
+                    # The 'break' statement was removed here so it continues searching for duplicates
             results[k] = success
         return results
 
